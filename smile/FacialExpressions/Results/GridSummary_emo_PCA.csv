@@ -1,0 +1,6 @@
+,classifier,"('best_score_grid', 'mean')","('best_score_grid', 'std')",most_frequent_params
+0,GradientBoostingClassifier,0.7892857142857144,0.023282865732866646,"{'criterion': 'friedman_mse', 'learning_rate': 0.5, 'loss': 'log_loss', 'max_depth': 3, 'max_features': 'log2', 'min_samples_leaf': 2, 'min_samples_split': 0.2, 'n_estimators': 10, 'subsample': 0.618}"
+1,LinearDiscriminantAnalysis,0.6964285714285714,0.0,"{'shrinkage': None, 'solver': 'lsqr'}"
+2,LogisticRegression,0.75,0.0,"{'C': 0.1, 'penalty': 'l1', 'solver': 'liblinear'}"
+3,QuadraticDiscriminantAnalysis,0.6607142857142857,0.0,"{'reg_param': 0.1, 'store_covariance': True, 'tol': 0.0001}"
+4,RandomForestClassifier,0.6785714285714286,0.012626906806902639,"{'bootstrap': True, 'max_depth': 5, 'min_samples_leaf': 4, 'min_samples_split': 10, 'n_estimators': 200}"
