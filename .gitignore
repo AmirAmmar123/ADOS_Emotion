@@ -1,1 +1,10 @@
-myenv/
+.venv/
+ADOS_Emotion/*
+OpenFace/
+out
+videos_emotion
+create_open_face.sh
+openFaceRunner.sh
+record.log
+videos
+__pycache__/
