@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "analyzer_runner",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/analyzer_runner.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--openface_dir",
+                "/home/amir/Ados_lab/videos/openface_subjects",
+                "--out_dir",
+                "/home/amir/Ados_lab/videos/openface_subjects",
+                "--video_src_dir",
+                "/home/amir/Ados_lab/videos/emotions/subjects_videos",
+                "--render"
+            ]
+        }
+    ]
+}
