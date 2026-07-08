@@ -157,6 +157,31 @@ class DYADAnalyzer:
 
         return {'i_mean': i_mean, 'i_std': i_std, 's_mean': s_mean, 's_std': s_std}
 
+    def get_smile_intensities(self, test_name=TEST_NAME):
+        """Calculates the mean and std of smile intensity (Smooth_Smile_Product) during valid intervals."""
+        if self.subj_df is None or self.intv_df is None: return 0.0, 0.0, 0.0, 0.0
+        
+        i_ints = self.intv_intervals.get(test_name, [])
+        s_ints = self.subj_intervals.get(test_name, [])
+        
+        min_len = min(len(self.subj_df), len(self.intv_df))
+        ts = self.subj_df['timestamp'].iloc[:min_len].values
+        i_sig = self.intv_df['Smooth_Smile_Product'].iloc[:min_len].values
+        s_sig = self.subj_df['Smooth_Smile_Product'].iloc[:min_len].values
+        
+        def get_intensities(intervals, sig):
+            intensities = []
+            for start, end in intervals:
+                idx = np.where((ts >= start) & (ts <= end))[0]
+                if len(idx) > 0:
+                    intensities.extend(sig[idx])
+            return np.mean(intensities) if intensities else 0.0, np.std(intensities) if intensities else 0.0
+
+        i_mean_int, i_std_int = get_intensities(i_ints, i_sig)
+        s_mean_int, s_std_int = get_intensities(s_ints, s_sig)
+        
+        return i_mean_int, i_std_int, s_mean_int, s_std_int
+
     def calculate_global_cosine_shifts(self, max_shift_sec=5.0):
         if self.subj_df is None or self.intv_df is None: return None, None
         min_len = min(len(self.subj_df), len(self.intv_df))
@@ -319,9 +344,6 @@ class DYADAnalyzer:
         return pd.DataFrame(results)
 
     def visualize_intersections(self, test_name=TEST_NAME, s_time=0.0, e_time=60.0, video_id="Unknown", out_dir=".", show_plot=False):
-        """
-        Creates a dedicated plot just for visualizing Simultaneous Smiles (Intersections).
-        """
         if self.subj_df is None or self.intv_df is None: return
         
         intersections = self.get_smile_intersections(test_name)
@@ -389,9 +411,6 @@ class DYADAnalyzer:
             plt.close(fig)
 
     def visualize_reactivity_pipeline(self, df_i2s, df_s2i, df_lookback_s, df_lookback_i, test_name=TEST_NAME, merge_gap_frames=15, reaction_window_frames=30, s_time=0.0, e_time=60.0, video_id="Unknown", out_dir=".", show_plot=False):
-        """
-        Generates a 4-row grid showing Signals, Debouncing, Forward Reactivity, and Lookback.
-        """
         if self.subj_df is None or self.intv_df is None: return
 
         intv_intervals = self.intv_intervals.get(test_name, [])
@@ -686,7 +705,7 @@ class DYADAnalyzer:
 if __name__ == "__main__":
     
     SHOW_PLOTS = False # <--- TOGGLE THIS TO TRUE IF YOU WANT POP-UPS
-    
+    RUNONE = False # <--- TOGGLE THIS TO TRUE IF YOU WANT TO RUN ONLY ONE VIDEO (FOR DEBUGGING)
     for video_id in get_dyad_intersection():
             test_video_id = video_id
             print(f"\n[{test_video_id}] ===============================================")
@@ -699,12 +718,19 @@ if __name__ == "__main__":
             dyad_analyzer = DYADAnalyzer()
             dyad_analyzer.load_dyad_data(subj_csv=paths['subj_csv'], intv_csv=paths['intv_csv'], subj_json=paths['subj_json'], intv_json=paths['intv_json'])
             
+            # --- Core Counts and Duration ---
             marisa_count, subject_count = dyad_analyzer.count_marisa_subject_smiles()
             smile_intersections = dyad_analyzer.get_smile_intersections(test_name='zscore')
             num_intersections = len(smile_intersections)
-
             dur_stats = dyad_analyzer.analyze_and_plot_smile_durations(bin_size=0.5, out_dir=out_dir)
 
+            # --- New Features: Overlap Lengths & Intensities ---
+            overlap_lengths = [end - start for start, end in smile_intersections]
+            avg_overlap_len = np.mean(overlap_lengths) if overlap_lengths else 0.0
+
+            i_mean_int, i_std_int, s_mean_int, s_std_int = dyad_analyzer.get_smile_intensities(test_name='zscore')
+
+            # --- Cosine Stats ---
             max_shift_sec = 1.0
             total_shifts = int(max_shift_sec * dyad_analyzer.fps) + 1
             stats_df = dyad_analyzer.analyze_interval_cosine_stats(test_name='zscore', max_shift_sec=max_shift_sec)
@@ -712,26 +738,56 @@ if __name__ == "__main__":
             mg_frames = 15
             rw_frames = 30
             
+            # --- Reactivity DataFrames ---
             df_i2s = dyad_analyzer.detect_reactive_smiles(test_name='zscore', merge_gap_frames=mg_frames, reaction_window_frames=rw_frames, trigger='intv')
             df_s2i = dyad_analyzer.detect_reactive_smiles(test_name='zscore', merge_gap_frames=mg_frames, reaction_window_frames=rw_frames, trigger='subj')
             df_lb_s = dyad_analyzer.detect_lookback_smiles(test_name='zscore', merge_gap_frames=mg_frames, lookback_window_frames=rw_frames, reference='subj')
             df_lb_i = dyad_analyzer.detect_lookback_smiles(test_name='zscore', merge_gap_frames=mg_frames, lookback_window_frames=rw_frames, reference='intv')
 
+            # --- New Features: Reactivity Summary Stats ---
+            i2s_reacts = df_i2s[df_i2s['status'] == 'REACTIVE_SMILE'] if not df_i2s.empty else pd.DataFrame()
+            num_i2s_reactions = len(i2s_reacts)
+            
+            avg_i2s_delay = i2s_reacts['delay_sec'].mean() if num_i2s_reactions > 0 else 0.0
+            std_i2s_delay = i2s_reacts['delay_sec'].std()
+            std_i2s_delay = std_i2s_delay if pd.notna(std_i2s_delay) else 0.0 # Catch NaN if only 1 reaction
+            
+            perc_subj_is_reaction = (num_i2s_reactions / subject_count * 100) if subject_count > 0 else 0.0
+            perc_intv_got_reaction = (num_i2s_reactions / len(df_i2s) * 100) if not df_i2s.empty else 0.0
+
+            # --- MASTER CSV WRITING ---
             if stats_df is not None and not stats_df.empty:
                 csv_filename = os.path.join(out_dir, f"Smile_Synchrony_Stats_Video_{test_video_id}.csv")
                 
                 with open(csv_filename, 'w') as f:
                     f.write("=== DYAD SMILE SYNCHRONY REPORT ===\n\n")
                     f.write("1. GENERAL STATISTICS\n")
+                    f.write("--- Counts & Durations ---\n")
                     f.write(f"Interviewer Total Smiles,{marisa_count}\n")
                     f.write(f"Subject Total Smiles,{subject_count}\n")
-                    f.write(f"Simultaneous Smiles (Intersections),{num_intersections}\n")
                     f.write(f"Interviewer Smile Duration Mean (s),{dur_stats['i_mean']:.3f}\n")
                     f.write(f"Interviewer Smile Duration Std (s),{dur_stats['i_std']:.3f}\n")
                     f.write(f"Subject Smile Duration Mean (s),{dur_stats['s_mean']:.3f}\n")
-                    f.write(f"Subject Smile Duration Std (s),{dur_stats['s_std']:.3f}\n")
+                    f.write(f"Subject Smile Duration Std (s),{dur_stats['s_std']:.3f}\n\n")
+
+                    f.write("--- Intensities (Smooth_Smile_Product) ---\n")
+                    f.write(f"Interviewer Smile Intensity Mean,{i_mean_int:.3f}\n")
+                    f.write(f"Interviewer Smile Intensity Std,{i_std_int:.3f}\n")
+                    f.write(f"Subject Smile Intensity Mean,{s_mean_int:.3f}\n")
+                    f.write(f"Subject Smile Intensity Std,{s_std_int:.3f}\n\n")
+
+                    f.write("--- Intersections (Overlaps) ---\n")
+                    f.write(f"Simultaneous Smiles (Intersections) Count,{num_intersections}\n")
+                    f.write(f"Average Intersection Duration (s),{avg_overlap_len:.3f}\n\n")
+
+                    f.write("--- Reactivity Summary (Interviewer -> Subject) ---\n")
+                    f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
+                    f.write(f"Average Delay of Reaction (s),{avg_i2s_delay:.3f}\n")
+                    f.write(f"Std Dev of Delay of Reaction (s),{std_i2s_delay:.3f}\n")
+                    f.write(f"% of Subject's smiles that were reactions,{perc_subj_is_reaction:.1f}%\n")
+                    f.write(f"% of Interviewer's smiles that got a reaction,{perc_intv_got_reaction:.1f}%\n\n")
                     
-                    f.write("\n2. COSINE SHIFT ANALYSIS\n")
+                    f.write("2. COSINE SHIFT ANALYSIS\n")
                     f.write(f"Total Shifts Evaluated,{total_shifts}\n")
                     f.write(f"Max Shift Seconds,{max_shift_sec}\n")
                     f.write(f"Frames Per Second,{dyad_analyzer.fps}\n\n")
@@ -808,4 +864,4 @@ if __name__ == "__main__":
                 
             dyad_analyzer.analyze_and_plot_full_signal_pdf_kl_divergence(bin_size=1.0, out_dir=out_dir)
             print(f"[{test_video_id}] Completed successfully!")
-
+            if RUNONE: break
