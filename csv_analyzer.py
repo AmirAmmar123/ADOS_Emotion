@@ -12,11 +12,11 @@ from plotly.subplots import make_subplots
 from scipy.stats import entropy
 import matplotlib.gridspec as gridspec
 
-OPENFACE_MARISA_DIR = '/home/amir/Ados_lab/videos/openface_marisa'
-OPENFACE_SUBJECTS_DIR = '/home/amir/Ados_lab/videos/openface_subjects'
+OPENFACE_MARISA_DIR = '/home/amir/Ados_lab/videos2/openface_marisa'
+OPENFACE_SUBJECTS_DIR = '/home/amir/Ados_lab/videos2/openface_subjects'
 ALL_INTERVALS_JSON_FILE = 'all_intervals.json'
 TEST_NAME = 'zscore'
-BASE_DIR = '/home/amir/Ados_lab/videos'
+BASE_DIR = '/home/amir/Ados_lab/videos2'
 
 # --- GLOBAL AESTHETIC PALETTE ---
 C_INTV = '#7209B7'       # Deep Purple
@@ -282,7 +282,10 @@ class DYADAnalyzer:
                 delay_sec = round(r_start - t_start, 3)
                 delay_frames = int(delay_sec * self.fps)
             else:
-                r_start, r_end, delay_sec, delay_frames = None, None, None, None
+                # --- APPLY 2.0s PENALTY FOR NO REACTION ---
+                r_start, r_end = None, None
+                delay_sec = 2.0
+                delay_frames = int(2.0 * self.fps) # 60 frames
                 status = "NO_REACTION"
 
             results.append({
@@ -331,7 +334,9 @@ class DYADAnalyzer:
                 status = f"PRECEDED_BY_{prec_name.upper()}"
                 delay_sec = round(ref_start - p_start, 3)
             else:
-                p_start, p_end, delay_sec = None, None, None
+                # --- APPLY 2.0s PENALTY FOR SPONTANEOUS ---
+                p_start, p_end = None, None
+                delay_sec = 2.0 
                 status = f"SPONTANEOUS_{ref_name.upper()}"
                 
             results.append({
@@ -342,6 +347,7 @@ class DYADAnalyzer:
                 'lookback_delay_sec': delay_sec
             })
         return pd.DataFrame(results)
+    
 
     def visualize_intersections(self, test_name=TEST_NAME, s_time=0.0, e_time=60.0, video_id="Unknown", out_dir=".", show_plot=False):
         if self.subj_df is None or self.intv_df is None: return
@@ -748,9 +754,13 @@ if __name__ == "__main__":
             i2s_reacts = df_i2s[df_i2s['status'] == 'REACTIVE_SMILE'] if not df_i2s.empty else pd.DataFrame()
             num_i2s_reactions = len(i2s_reacts)
             
-            avg_i2s_delay = i2s_reacts['delay_sec'].mean() if num_i2s_reactions > 0 else 0.0
-            std_i2s_delay = i2s_reacts['delay_sec'].std()
-            std_i2s_delay = std_i2s_delay if pd.notna(std_i2s_delay) else 0.0 # Catch NaN if only 1 reaction
+            
+            if not df_i2s.empty:
+                avg_i2s_delay = df_i2s['delay_sec'].mean()
+                std_i2s_delay = df_i2s['delay_sec'].std() if len(df_i2s) > 1 else 0.0
+            else:
+                avg_i2s_delay = 2.0 # Default penalty if Interviewer never smiled
+                std_i2s_delay = 0.0
             
             perc_subj_is_reaction = (num_i2s_reactions / subject_count * 100) if subject_count > 0 else 0.0
             perc_intv_got_reaction = (num_i2s_reactions / len(df_i2s) * 100) if not df_i2s.empty else 0.0
@@ -782,6 +792,7 @@ if __name__ == "__main__":
 
                     f.write("--- Reactivity Summary (Interviewer -> Subject) ---\n")
                     f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
+                    # Since we guarantee a number now, we just format to .3f directly
                     f.write(f"Average Delay of Reaction (s),{avg_i2s_delay:.3f}\n")
                     f.write(f"Std Dev of Delay of Reaction (s),{std_i2s_delay:.3f}\n")
                     f.write(f"% of Subject's smiles that were reactions,{perc_subj_is_reaction:.1f}%\n")

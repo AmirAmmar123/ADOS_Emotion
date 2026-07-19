@@ -1,9 +1,10 @@
 import os
 import glob
 import pandas as pd
+import numpy as np # <--- ADD THIS IMPORT
 
 # --- Configuration Paths ---
-BASE_RESULTS_DIR = '/home/amir/Ados_lab/videos/results'
+BASE_RESULTS_DIR = '/home/amir/Ados_lab/videos2/results'
 LABELS_CSV_PATH = 'mapped_labels_output.csv'  
 FINAL_OUTPUT_PATH = 'final_feature_matrix.csv'
 
@@ -37,14 +38,24 @@ def extract_features_from_report(report_path):
             lines = [line.strip() for line in f if ',' in line]
             
         for line in lines:
-            feature_name, feature_value_str = [p.strip() for p in line.split(',', 1)]
+            # --- FIX 1: Safely unpack the split line ---
+            parts = [p.strip() for p in line.split(',', 1)]
+            if len(parts) != 2:
+                continue # Skip malformed lines instead of crashing
+                
+            feature_name, feature_value_str = parts
             
             if feature_name in FEATURES_TO_EXTRACT:
-                try:
-                    # Remove percentages and cast to float
-                    extracted_data[feature_name] = float(feature_value_str.replace('%', ''))
-                except ValueError:
-                    extracted_data[feature_name] = pd.NA 
+                # --- FIX 2: Explicitly handle missing data strings ---
+                if feature_value_str.upper() in ['N/A', 'NAN', 'NONE', '']:
+                    extracted_data[feature_name] = np.nan
+                else:
+                    try:
+                        # Remove percentages and cast to float
+                        extracted_data[feature_name] = float(feature_value_str.replace('%', ''))
+                    except ValueError:
+                        # --- FIX 3: Use np.nan instead of pd.NA ---
+                        extracted_data[feature_name] = np.nan 
                     
     except Exception as e:
         print(f"Error reading {report_path}: {e}")
