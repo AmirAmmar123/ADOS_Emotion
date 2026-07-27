@@ -282,10 +282,8 @@ class DYADAnalyzer:
                 delay_sec = round(r_start - t_start, 3)
                 delay_frames = int(delay_sec * self.fps)
             else:
-                # --- APPLY 2.0s PENALTY FOR NO REACTION ---
-                r_start, r_end = None, None
-                delay_sec = 2.0
-                delay_frames = int(2.0 * self.fps) # 60 frames
+                # REVERTED: Output None if there is no reaction
+                r_start, r_end, delay_sec, delay_frames = None, None, None, None
                 status = "NO_REACTION"
 
             results.append({
@@ -334,9 +332,8 @@ class DYADAnalyzer:
                 status = f"PRECEDED_BY_{prec_name.upper()}"
                 delay_sec = round(ref_start - p_start, 3)
             else:
-                # --- APPLY 2.0s PENALTY FOR SPONTANEOUS ---
-                p_start, p_end = None, None
-                delay_sec = 2.0 
+                # REVERTED: Output None if it's spontaneous
+                p_start, p_end, delay_sec = None, None, None
                 status = f"SPONTANEOUS_{ref_name.upper()}"
                 
             results.append({
@@ -754,12 +751,14 @@ if __name__ == "__main__":
             i2s_reacts = df_i2s[df_i2s['status'] == 'REACTIVE_SMILE'] if not df_i2s.empty else pd.DataFrame()
             num_i2s_reactions = len(i2s_reacts)
             
-            
-            if not df_i2s.empty:
-                avg_i2s_delay = df_i2s['delay_sec'].mean()
-                std_i2s_delay = df_i2s['delay_sec'].std() if len(df_i2s) > 1 else 0.0
+            # THE NEW LOGIC:
+            if num_i2s_reactions > 0:
+                # If there is at least one reaction, calculate mean/std normally based ONLY on valid reactions
+                avg_i2s_delay = i2s_reacts['delay_sec'].mean()
+                std_i2s_delay = i2s_reacts['delay_sec'].std() if num_i2s_reactions > 1 else 0.0
             else:
-                avg_i2s_delay = 2.0 # Default penalty if Interviewer never smiled
+                # If there are NO reactions at all, apply the 2.0s penalty
+                avg_i2s_delay = 2.0
                 std_i2s_delay = 0.0
             
             perc_subj_is_reaction = (num_i2s_reactions / subject_count * 100) if subject_count > 0 else 0.0
@@ -792,7 +791,6 @@ if __name__ == "__main__":
 
                     f.write("--- Reactivity Summary (Interviewer -> Subject) ---\n")
                     f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
-                    # Since we guarantee a number now, we just format to .3f directly
                     f.write(f"Average Delay of Reaction (s),{avg_i2s_delay:.3f}\n")
                     f.write(f"Std Dev of Delay of Reaction (s),{std_i2s_delay:.3f}\n")
                     f.write(f"% of Subject's smiles that were reactions,{perc_subj_is_reaction:.1f}%\n")
