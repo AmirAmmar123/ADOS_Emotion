@@ -12,7 +12,10 @@ FINAL_OUTPUT_PATH = 'final_feature_matrix.csv'
 FEATURES_TO_EXTRACT = [
     "Interviewer Total Smiles",
     "Subject Total Smiles",
+    "Interviewer Smile Rate (per min)",
+    "Subject Smile Rate (per min)",
     "Simultaneous Smiles (Intersections) Count",
+    "Simultaneous Smiles (Intersections) Rate (per min)",
     "Interviewer Smile Duration Mean (s)",
     "Interviewer Smile Duration Std (s)",
     "Subject Smile Duration Mean (s)",

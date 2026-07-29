@@ -97,12 +97,27 @@ class DYADAnalyzer:
         self.intv_intervals = self._load_intervals(intv_json)
 
     def count_marisa_subject_smiles(self, test_name=TEST_NAME):
+        """Calculates the smile rate (smiles per minute) for both subjects."""
         marisa_count = len(self.intv_intervals.get(test_name, []))
         subject_count = len(self.subj_intervals.get(test_name, []))
-        return marisa_count, subject_count
+        
+        # Determine the total valid duration of the video in minutes
+        if self.subj_df is not None and self.intv_df is not None and not self.subj_df.empty and not self.intv_df.empty:
+            max_ts = max(self.subj_df['timestamp'].max(), self.intv_df['timestamp'].max())
+            total_minutes = max_ts / 60.0
+            
+            # Avoid division by zero for corrupted/empty videos
+            if total_minutes > 0:
+                marisa_rate = round(marisa_count / total_minutes, 5)
+                subject_rate = round(subject_count / total_minutes, 5)
+                return marisa_rate, subject_rate, marisa_count, subject_count
+                
+        # Fallback if no valid data is found
+        return 0.0, 0.0, 0, 0
+
 
     def get_smile_intersections(self, test_name=TEST_NAME):
-        """Calculates the exact overlapping intervals where BOTH subjects are smiling."""
+        """Calculates the overlapping intervals and the intersection rate per minute."""
         intv_ints = self.intv_intervals.get(test_name, [])
         subj_ints = self.subj_intervals.get(test_name, [])
 
@@ -124,7 +139,16 @@ class DYADAnalyzer:
             else:
                 j += 1
 
-        return intersections
+        # Calculate the rate per minute
+        intersection_rate = 0.0
+        if self.subj_df is not None and self.intv_df is not None and not self.subj_df.empty and not self.intv_df.empty:
+            max_ts = max(self.subj_df['timestamp'].max(), self.intv_df['timestamp'].max())
+            total_minutes = max_ts / 60.0
+            
+            if total_minutes > 0:
+                intersection_rate = round(len(intersections) / total_minutes, 5)
+
+        return intersections, intersection_rate
 
     def analyze_and_plot_smile_durations(self, test_name=TEST_NAME, bin_size=0.5, out_dir="."):
         intv_ints = self.intv_intervals.get(test_name, [])
@@ -349,7 +373,8 @@ class DYADAnalyzer:
     def visualize_intersections(self, test_name=TEST_NAME, s_time=0.0, e_time=60.0, video_id="Unknown", out_dir=".", show_plot=False):
         if self.subj_df is None or self.intv_df is None: return
         
-        intersections = self.get_smile_intersections(test_name)
+        intersections, _ = self.get_smile_intersections(test_name)
+
         min_len = min(len(self.subj_df), len(self.intv_df))
         ts = self.subj_df['timestamp'].iloc[:min_len].values
         
@@ -722,8 +747,8 @@ if __name__ == "__main__":
             dyad_analyzer.load_dyad_data(subj_csv=paths['subj_csv'], intv_csv=paths['intv_csv'], subj_json=paths['subj_json'], intv_json=paths['intv_json'])
             
             # --- Core Counts and Duration ---
-            marisa_count, subject_count = dyad_analyzer.count_marisa_subject_smiles()
-            smile_intersections = dyad_analyzer.get_smile_intersections(test_name='zscore')
+            marisa_rate, subject_rate, marisa_count, subject_count = dyad_analyzer.count_marisa_subject_smiles()
+            smile_intersections, intersection_rate = dyad_analyzer.get_smile_intersections(test_name='zscore')
             num_intersections = len(smile_intersections)
             dur_stats = dyad_analyzer.analyze_and_plot_smile_durations(bin_size=0.5, out_dir=out_dir)
 
@@ -772,8 +797,10 @@ if __name__ == "__main__":
                     f.write("=== DYAD SMILE SYNCHRONY REPORT ===\n\n")
                     f.write("1. GENERAL STATISTICS\n")
                     f.write("--- Counts & Durations ---\n")
-                    f.write(f"Interviewer Total Smiles,{marisa_count}\n")
-                    f.write(f"Subject Total Smiles,{subject_count}\n")
+                    # f.write(f"Interviewer Total Smiles,{marisa_count}\n")
+                    # f.write(f"Subject Total Smiles,{subject_count}\n")
+                    f.write(f"Interviewer Smile Rate (per min),{marisa_rate:.3f}\n")
+                    f.write(f"Subject Smile Rate (per min),{subject_rate:.3f}\n\n")
                     f.write(f"Interviewer Smile Duration Mean (s),{dur_stats['i_mean']:.3f}\n")
                     f.write(f"Interviewer Smile Duration Std (s),{dur_stats['i_std']:.3f}\n")
                     f.write(f"Subject Smile Duration Mean (s),{dur_stats['s_mean']:.3f}\n")
@@ -786,11 +813,12 @@ if __name__ == "__main__":
                     f.write(f"Subject Smile Intensity Std,{s_std_int:.3f}\n\n")
 
                     f.write("--- Intersections (Overlaps) ---\n")
-                    f.write(f"Simultaneous Smiles (Intersections) Count,{num_intersections}\n")
+                    # f.write(f"Simultaneous Smiles (Intersections) Count,{num_intersections}\n")
+                    f.write(f"Simultaneous Smiles (Intersections) Rate (per min),{intersection_rate:.3f}\n")
                     f.write(f"Average Intersection Duration (s),{avg_overlap_len:.3f}\n\n")
 
                     f.write("--- Reactivity Summary (Interviewer -> Subject) ---\n")
-                    f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
+                    # f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
                     f.write(f"Average Delay of Reaction (s),{avg_i2s_delay:.3f}\n")
                     f.write(f"Std Dev of Delay of Reaction (s),{std_i2s_delay:.3f}\n")
                     f.write(f"% of Subject's smiles that were reactions,{perc_subj_is_reaction:.1f}%\n")

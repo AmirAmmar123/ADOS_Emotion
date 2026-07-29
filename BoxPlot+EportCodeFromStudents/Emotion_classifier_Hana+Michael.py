@@ -38,7 +38,9 @@ scaler = StandardScaler()
 X_normalized = scaler.fit_transform(X)
 
 # classifier
-rf = RandomForestClassifier(n_estimators=100, class_weight='balanced')
+# rf = RandomForestClassifier(n_estimators=100, class_weight='balanced')
+rf = RandomForestClassifier(n_estimators=100, max_depth=3, class_weight='balanced', random_state=42)
+
 
 # 5-fold cross-validation
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -102,3 +104,7 @@ plt.ylabel('True Label')
 plt.tight_layout()
 plt.savefig(r"C:\Users\USER\Documents\UniversityProjects\Hagit_Lab\webpage\webpage_files\emotion_classifier\conf_{}.png".format('_'.join(selected_categories)), dpi=300)
 plt.show()
+
+
+
+
