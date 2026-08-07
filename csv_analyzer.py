@@ -86,15 +86,18 @@ class DYADAnalyzer:
         df['Smooth_Smile_Product'] = df['AU12_r_smooth'] * df['AU06_r_smooth']
         return df
 
+
     def _load_intervals(self, json_path):
         if not os.path.exists(json_path): return {}
         with open(json_path, 'r') as f: return json.load(f)
+
 
     def load_dyad_data(self, subj_csv, intv_csv, subj_json, intv_json):
         self.subj_df = self._process_signal(subj_csv)
         self.subj_intervals = self._load_intervals(subj_json)
         self.intv_df = self._process_signal(intv_csv)
         self.intv_intervals = self._load_intervals(intv_json)
+
 
     def count_marisa_subject_smiles(self, test_name=TEST_NAME):
         """Calculates the smile rate (smiles per minute) for both subjects."""
@@ -150,6 +153,7 @@ class DYADAnalyzer:
 
         return intersections, intersection_rate
 
+
     def analyze_and_plot_smile_durations(self, test_name=TEST_NAME, bin_size=0.5, out_dir="."):
         intv_ints = self.intv_intervals.get(test_name, [])
         subj_ints = self.subj_intervals.get(test_name, [])
@@ -181,6 +185,7 @@ class DYADAnalyzer:
 
         return {'i_mean': i_mean, 'i_std': i_std, 's_mean': s_mean, 's_std': s_std}
 
+
     def get_smile_intensities(self, test_name=TEST_NAME):
         """Calculates the mean and std of smile intensity (Smooth_Smile_Product) during valid intervals."""
         if self.subj_df is None or self.intv_df is None: return 0.0, 0.0, 0.0, 0.0
@@ -206,6 +211,7 @@ class DYADAnalyzer:
         
         return i_mean_int, i_std_int, s_mean_int, s_std_int
 
+
     def calculate_global_cosine_shifts(self, max_shift_sec=5.0):
         if self.subj_df is None or self.intv_df is None: return None, None
         min_len = min(len(self.subj_df), len(self.intv_df))
@@ -227,6 +233,7 @@ class DYADAnalyzer:
             
         return np.array(delay_axis), np.array(cosine_scores)
     
+
     def analyze_interval_cosine_stats(self, test_name='zscore', max_shift_sec=5.0):
         if self.subj_df is None or self.intv_df is None: return None
         min_len = min(len(self.subj_df), len(self.intv_df))
@@ -268,6 +275,31 @@ class DYADAnalyzer:
                 'Mean_Cos_Sim': np.mean(interval_scores), 'Std_Cos_Sim': np.std(interval_scores)             
             })
         return pd.DataFrame(results)
+
+
+    def summarize_cosine_stats(self, stats_df, threshold=0.5):
+        """
+        Filters the cosine stats DataFrame by a threshold and calculates the mean/std 
+        for both the optimal cosine similarity and the corresponding optimal delay.
+        """
+        if stats_df is None or stats_df.empty:
+            return 0.0, 0.0, 2, 0
+
+        # Filter rows where the maximum cosine similarity crosses the threshold
+        valid_intervals = stats_df[stats_df['Max_Cos_Sim'] >= threshold]
+        num_crossed = len(valid_intervals)
+
+        if num_crossed > 0:
+            mean_opt_cos = valid_intervals['Max_Cos_Sim'].mean()
+            std_opt_cos = valid_intervals['Max_Cos_Sim'].std() if num_crossed > 1 else 0.0
+            
+            mean_opt_delay = valid_intervals['Optimal_Delay_Sec'].mean()
+            std_opt_delay = valid_intervals['Optimal_Delay_Sec'].std() if num_crossed > 1 else 0.0
+        else:
+            mean_opt_cos, std_opt_cos, mean_opt_delay, std_opt_delay = 0.0, 0.0, 2, 0.0
+
+        return mean_opt_cos, std_opt_cos, mean_opt_delay, std_opt_delay, num_crossed
+
 
     def detect_reactive_smiles(self, test_name=TEST_NAME, merge_gap_frames=10, reaction_window_frames=30, trigger='intv'):
         if trigger == 'intv':
@@ -320,6 +352,7 @@ class DYADAnalyzer:
                 'delay_frames': delay_frames
             })
         return pd.DataFrame(results)
+
 
     def detect_lookback_smiles(self, test_name=TEST_NAME, merge_gap_frames=15, lookback_window_frames=30, reference='subj'):
         if reference == 'subj':
@@ -437,6 +470,7 @@ class DYADAnalyzer:
             plt.show()
         else:
             plt.close(fig)
+
 
     def visualize_reactivity_pipeline(self, df_i2s, df_s2i, df_lookback_s, df_lookback_i, test_name=TEST_NAME, merge_gap_frames=15, reaction_window_frames=30, s_time=0.0, e_time=60.0, video_id="Unknown", out_dir=".", show_plot=False):
         if self.subj_df is None or self.intv_df is None: return
@@ -591,9 +625,9 @@ class DYADAnalyzer:
         else:
             plt.close(fig)
 
+
     def simulate_cosine_shift_for_interval(self, test_name=TEST_NAME, interval_index=0, max_shift_sec=3.0, out_dir="."):
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
+
 
         if self.subj_df is None or self.intv_df is None: return
 
@@ -668,6 +702,7 @@ class DYADAnalyzer:
         output_path = os.path.join(out_dir, f"Cosine_Simulation_Interval_{interval_index}.html")
         fig.write_html(output_path)
 
+
     def analyze_and_plot_pdf_kl_divergence(self, test_name=TEST_NAME, interval_index=0, bin_size="auto", out_dir="."):
         if self.subj_df is None or self.intv_df is None: return
         intervals = self.intv_intervals.get(test_name, [])
@@ -702,6 +737,7 @@ class DYADAnalyzer:
         output_path = os.path.join(out_dir, f"PDF_KL_Divergence_Interval_{interval_index}.html")
         fig.write_html(output_path)
     
+
     def analyze_and_plot_full_signal_pdf_kl_divergence(self, bin_size="auto", out_dir="."):
         if self.subj_df is None or self.intv_df is None: return
         min_len = min(len(self.subj_df), len(self.intv_df))
@@ -745,6 +781,7 @@ if __name__ == "__main__":
             paths = get_dyad_paths(BASE_DIR, test_video_id)
             dyad_analyzer = DYADAnalyzer()
             dyad_analyzer.load_dyad_data(subj_csv=paths['subj_csv'], intv_csv=paths['intv_csv'], subj_json=paths['subj_json'], intv_json=paths['intv_json'])
+            video_length = max(dyad_analyzer.subj_df['timestamp'].max(), dyad_analyzer.intv_df['timestamp'].max())/60.0
             
             # --- Core Counts and Duration ---
             marisa_rate, subject_rate, marisa_count, subject_count = dyad_analyzer.count_marisa_subject_smiles()
@@ -762,6 +799,11 @@ if __name__ == "__main__":
             max_shift_sec = 1.0
             total_shifts = int(max_shift_sec * dyad_analyzer.fps) + 1
             stats_df = dyad_analyzer.analyze_interval_cosine_stats(test_name='zscore', max_shift_sec=max_shift_sec)
+
+            # --- Calculate Threshold Summaries ---
+            COSINE_THRESHOLD = 0.8
+            mean_opt_cos, std_opt_cos, mean_opt_delay, std_opt_delay, num_crossed_th = dyad_analyzer.summarize_cosine_stats(stats_df, threshold=COSINE_THRESHOLD)
+            num_intervals_crossed_fraction= (num_crossed_th / len(stats_df['Max_Cos_Sim'])) if len(stats_df['Max_Cos_Sim']) != 0 else 0.0
             
             mg_frames = 15
             rw_frames = 30
@@ -789,16 +831,18 @@ if __name__ == "__main__":
             perc_subj_is_reaction = (num_i2s_reactions / subject_count * 100) if subject_count > 0 else 0.0
             perc_intv_got_reaction = (num_i2s_reactions / len(df_i2s) * 100) if not df_i2s.empty else 0.0
 
+            
             # --- MASTER CSV WRITING ---
             if stats_df is not None and not stats_df.empty:
                 csv_filename = os.path.join(out_dir, f"Smile_Synchrony_Stats_Video_{test_video_id}.csv")
                 
                 with open(csv_filename, 'w') as f:
                     f.write("=== DYAD SMILE SYNCHRONY REPORT ===\n\n")
+                    f.write(f"Video length,{video_length}\n")
                     f.write("1. GENERAL STATISTICS\n")
                     f.write("--- Counts & Durations ---\n")
-                    # f.write(f"Interviewer Total Smiles,{marisa_count}\n")
-                    # f.write(f"Subject Total Smiles,{subject_count}\n")
+                    f.write(f"Interviewer Total Smiles,{marisa_count}\n")
+                    f.write(f"Subject Total Smiles,{subject_count}\n")
                     f.write(f"Interviewer Smile Rate (per min),{marisa_rate:.3f}\n")
                     f.write(f"Subject Smile Rate (per min),{subject_rate:.3f}\n\n")
                     f.write(f"Interviewer Smile Duration Mean (s),{dur_stats['i_mean']:.3f}\n")
@@ -813,12 +857,14 @@ if __name__ == "__main__":
                     f.write(f"Subject Smile Intensity Std,{s_std_int:.3f}\n\n")
 
                     f.write("--- Intersections (Overlaps) ---\n")
-                    # f.write(f"Simultaneous Smiles (Intersections) Count,{num_intersections}\n")
+                    f.write(f"Simultaneous Smiles (Intersections) Count,{num_intersections}\n")
+                    f.write(f"Simultaneous Smiles fraction (Marisa),{(num_intersections/marisa_count):.3f}\n")
+                    f.write(f"Simultaneous Smiles fraction (Subject),{(num_intersections/subject_count):.3f}\n")
                     f.write(f"Simultaneous Smiles (Intersections) Rate (per min),{intersection_rate:.3f}\n")
                     f.write(f"Average Intersection Duration (s),{avg_overlap_len:.3f}\n\n")
 
                     f.write("--- Reactivity Summary (Interviewer -> Subject) ---\n")
-                    # f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
+                    f.write(f"Total Reactions (Subject reacted to Intv),{num_i2s_reactions}\n")
                     f.write(f"Average Delay of Reaction (s),{avg_i2s_delay:.3f}\n")
                     f.write(f"Std Dev of Delay of Reaction (s),{std_i2s_delay:.3f}\n")
                     f.write(f"% of Subject's smiles that were reactions,{perc_subj_is_reaction:.1f}%\n")
@@ -827,7 +873,14 @@ if __name__ == "__main__":
                     f.write("2. COSINE SHIFT ANALYSIS\n")
                     f.write(f"Total Shifts Evaluated,{total_shifts}\n")
                     f.write(f"Max Shift Seconds,{max_shift_sec}\n")
-                    f.write(f"Frames Per Second,{dyad_analyzer.fps}\n\n")
+                    f.write(f"Frames Per Second,{dyad_analyzer.fps}\n")
+                    f.write(f"Cosine Similarity Threshold,{COSINE_THRESHOLD}\n")
+                    f.write(f"Intervals Crossing Threshold,{num_crossed_th}\n")
+                    f.write(f"Intervals Crossing fraction,{num_intervals_crossed_fraction:.3f}\n")
+                    f.write(f"Mean of Optimal Cosines (>TH),{mean_opt_cos:.3f}\n")
+                    f.write(f"Std of Optimal Cosines (>TH),{std_opt_cos:.3f}\n")
+                    f.write(f"Mean of Optimal Delays (s) (>TH),{mean_opt_delay:.3f}\n")
+                    f.write(f"Std of Optimal Delays (s) (>TH),{std_opt_delay:.3f}\n\n")
 
                 stats_df.to_csv(csv_filename, mode='a', index=False)
 

@@ -6,15 +6,12 @@ import numpy as np # <--- ADD THIS IMPORT
 # --- Configuration Paths ---
 BASE_RESULTS_DIR = '/home/amir/Ados_lab/videos2/results'
 LABELS_CSV_PATH = 'mapped_labels_output.csv'  
-FINAL_OUTPUT_PATH = 'final_feature_matrix.csv'
+FINAL_OUTPUT_PATH = '/home/amir/Ados_lab/lab/final_feature_no_correlation_matrix.csv'  # Output path for the final feature matrix
 
 # Features to extract exactly as they appear in the stats CSV
 FEATURES_TO_EXTRACT = [
-    "Interviewer Total Smiles",
-    "Subject Total Smiles",
     "Interviewer Smile Rate (per min)",
     "Subject Smile Rate (per min)",
-    "Simultaneous Smiles (Intersections) Count",
     "Simultaneous Smiles (Intersections) Rate (per min)",
     "Interviewer Smile Duration Mean (s)",
     "Interviewer Smile Duration Std (s)",
@@ -29,7 +26,14 @@ FEATURES_TO_EXTRACT = [
     "Average Delay of Reaction (s)",
     "Std Dev of Delay of Reaction (s)",
     "% of Subject's smiles that were reactions",
-    "% of Interviewer's smiles that got a reaction"
+    "% of Interviewer's smiles that got a reaction",
+    "Simultaneous Smiles fraction (Marisa)",
+    "Simultaneous Smiles fraction (Subject)",
+    "Intervals Crossing Threshold (per frame)",
+    # "Mean of Optimal Cosines (>TH)",
+    # "Std of Optimal Cosines (>TH)",
+    # "Mean of Optimal Delays (s) (>TH)",
+    # "Std of Optimal Delays (s) (>TH)"
 ]
 
 def extract_features_from_report(report_path):
