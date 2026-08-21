@@ -1,0 +1,36 @@
+
+Interviewer_Features:
+
+Interviewer Smile Rate (per min)
+Interviewer Smile Duration Mean (s)
+Interviewer Smile Duration Std (s)
+Interviewer Smile Intensity Mean
+Interviewer Smile Intensity Std
+
+
+Subject_Features:
+
+Subject Smile Rate (per min)
+Subject Smile Duration Mean (s)
+Subject Smile Duration Std (s)
+Subject Smile Intensity Mean
+Subject Smile Intensity Std
+
+
+Interaction_between:
+
+Simultaneous Smiles (Intersections) Rate (per min)
+Average Intersection Duration (s)
+Simultaneous Smiles fraction (Marisa)
+Simultaneous Smiles fraction (Subject
+Average Delay of Reaction (s)
+Std Dev of Delay of Reaction (s)
+% of Subject's smiles that were reactions
+% of Interviewer's smiles that got a reaction
+Cosine Similarity Threshold
+Intervals Crossing Threshold
+Intervals Crossing fraction
+Mean of Optimal Cosines (>TH)
+Std of Optimal Cosines (>TH)
+Mean of Optimal Delays (s) (>TH)
+Std of Optimal Delays (s) (>TH)
