@@ -806,7 +806,7 @@ if __name__ == "__main__":
             num_intervals_crossed_fraction= (num_crossed_th / len(stats_df['Max_Cos_Sim'])) if len(stats_df['Max_Cos_Sim']) != 0 else 0.0
             
             mg_frames = 15
-            rw_frames = 30
+            rw_frames = 45
             
             # --- Reactivity DataFrames ---
             df_i2s = dyad_analyzer.detect_reactive_smiles(test_name='zscore', merge_gap_frames=mg_frames, reaction_window_frames=rw_frames, trigger='intv')
